@@ -6,7 +6,7 @@ import Dashboard from "./pages/Dashboard";
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Home />,
+    element: <Dashboard />,
   },
   {
     path: "/dashboard",

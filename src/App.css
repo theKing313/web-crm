@@ -5,3 +5,6 @@
   padding: 2rem;
   text-align: center;
 }
+body {
+  background: black !important;
+}

@@ -7,6 +7,17 @@ h1 {
   font-size: 3.2em;
   line-height: 1.1;
 }
+.MuiOutlinedInput-root {
+  border-radius: 10px !important;
+  &:hover {
+    /* border: 1px solid #1677ff; */
+  }
+}
+/* .css-16bevx5-MuiFormControl-root-MuiTextField-root {
+  &:hover {
+    border: 1px solid #1677ff;
+  } */
+/* } */
 
 button {
   border-radius: 8px;
@@ -39,4 +50,8 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+html,
+body {
+  background: black !important;
 }

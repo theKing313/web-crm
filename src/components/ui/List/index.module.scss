@@ -1,0 +1,25 @@
+.listItem {
+  position: relative;
+  display: block;
+  min-height: 32px;
+  padding: 5px 12px;
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: normal;
+  font-size: 14px;
+  line-height: 1.5714285714285714;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  border-radius: 4px;
+  //   width: 100% !important;
+}
+.button {
+  background: none;
+  color: black;
+  width: 100%;
+  text-align: left;
+  border: none;
+  &:hover {
+    background: #f4f4f4;
+  }
+}

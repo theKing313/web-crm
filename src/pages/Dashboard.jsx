@@ -1,14 +1,17 @@
 import React from "react";
-import OrdersTable from "../components/OrdersTable";
-import CustomerSearch from "../components/CustomerSearch";
-import SalesDocumentForm from "../components/ui/SalesDocumentForm";
+// import OrdersTable from "../components/OrdersTable";
+// import CustomerSearch from "../components/CustomerSearch";
+// import SalesDocumentForm from "../components/ui/SalesDocumentForm";
+import CreateSaleForm from "../components/ui/SaleForm/CreateSaleForm";
+// import CreateSaleForm from "../components/ui/CreateSaleForm";
 
 function Dashboard() {
   return (
     <div>
-      <CustomerSearch />
+      {/* <CustomerSearch /> */}
       {/* <SalesDocumentForm /> */}
-      <OrdersTable />
+      {/* <OrdersTable /> */}
+      <CreateSaleForm />
     </div>
   );
 }
