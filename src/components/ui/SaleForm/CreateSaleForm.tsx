@@ -13,13 +13,12 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  IconButton,
   Divider,
   CircularProgress,
   Paper,
   styled,
+  TableContainer,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
 import { useDebounce } from "../../../hooks/useDebounce";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import {
@@ -29,18 +28,29 @@ import {
   fetchProducts,
   fetchWarehouses,
 } from "../../../api";
-import { CustomArrowDropDownIcon } from "../CircularProgress";
+import { CustomArrowDropDownIcon } from "../Circular/CircularProgress";
 import { CustomDataIcon } from "../Data/Data";
 import styles from "./index.module.scss";
-
+import ProductSelectModal from "../../OrdersTable";
 interface Product {
   id: number;
   name: string;
   price: number;
   discount: number;
   qty: number;
+  unit_name?: string;
 }
-
+interface SearchResultI {
+  result: Array<{
+    id: number;
+    name: string;
+    price: number;
+    discount: number;
+    qty: number;
+    unit_name?: string;
+  }>;
+  count: number;
+}
 export default function CreateSaleForm() {
   const CustomPaper = styled(Paper)({
     borderRadius: 4,
@@ -59,7 +69,6 @@ export default function CreateSaleForm() {
   const [priceType, setPriceType] = useState<string | null>(null);
   const [pbox, setPbox] = useState<string | null>(null);
 
-  const [products, setProducts] = useState<Product[]>([]);
   const [paid, setPaid] = useState(0);
 
   const priceTypes = ["Розница", "Опт"];
@@ -98,23 +107,6 @@ export default function CreateSaleForm() {
 
   const isLoading = queries.some((q) => q.isLoading);
 
-  // 🔹 Обработчики
-  const handleAddProduct = () => {
-    setProducts((prev) => [
-      ...prev,
-      { id: Date.now(), name: "Товар тест", price: 100, discount: 0, qty: 1 },
-    ]);
-  };
-
-  const handleRemoveProduct = (id: number) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  const total = products.reduce(
-    (sum, p) => sum + (p.price - p.discount) * p.qty,
-    0
-  );
-
   const handleSubmit = (conduct: boolean) => {
     const payload = {
       token,
@@ -125,7 +117,6 @@ export default function CreateSaleForm() {
       warehouse,
       priceType,
       pbox,
-      products,
       paid,
       conduct,
     };
@@ -135,18 +126,27 @@ export default function CreateSaleForm() {
 
   // 🔹 Search
   // 🔹 Search Products
+
+  // 🔹 Обработчики
+
+  const handleRemoveProduct = (id: number) => {
+    setCartProducts((prev) => prev.filter((p) => p.id !== id));
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 500);
-  const [, setCartProducts] = useState<Product[]>([]);
+  const [cartProducts, setCartProducts] = useState<Product[]>([]);
   const {
-    data: searchResults = [], // <-- теперь не "products", а "searchResults"
+    data: searchResults = { result: [], count: 0 },
+    //  data: searchResults = []
     isLoading: isProductsLoading,
-  } = useQuery<any[], Error>({
-    queryKey: ["products", { search: debouncedSearch, limit: 10 }],
+  } = useQuery<SearchResultI, Error>({
+    queryKey: ["products", { search: debouncedSearch, limit: 20 }],
     queryFn: async ({ queryKey }) => {
       const [, info] = queryKey as [string, { search: string; limit: number }];
       const response = await fetchProducts({
-        search: info.search,
+        token: searchToken,
+        name: info.search,
         limit: info.limit,
       });
       return response ?? [];
@@ -160,7 +160,7 @@ export default function CreateSaleForm() {
 
   const handleSelectProduct = (productName: string | null) => {
     if (!productName) return;
-    const product = searchResults.find((p) => p.name === productName);
+    const product = searchResults.result.find((p) => p.name === productName);
     if (product) {
       setCartProducts((prev) => [
         ...prev,
@@ -168,6 +168,7 @@ export default function CreateSaleForm() {
           id: product.id,
           name: product.name,
           price: product.price,
+          unit_name: product.unit_name,
           discount: 0,
           qty: 1,
         },
@@ -175,7 +176,46 @@ export default function CreateSaleForm() {
       setSearchQuery(""); // очистить строку после выбора
     }
   };
+  //
+  const updateProductInCart = (id: number, updatedFields: Partial<Product>) => {
+    setCartProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updatedFields } : p))
+    );
+  };
+  const handlePriceChange = (
+    id: number,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const price = parseFloat(e.target.value) || 0;
+    updateProductInCart(id, { price });
+  };
+
+  const handleDiscountChange = (
+    id: number,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const discount = parseFloat(e.target.value) || 0;
+    updateProductInCart(id, { discount });
+  };
+
+  const handleQtyChange = (
+    id: number,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const qty = parseInt(e.target.value) || 1;
+    updateProductInCart(id, { qty });
+  };
+  const total = cartProducts.reduce(
+    (sum, p) => sum + (p.price - p.discount) * p.qty,
+    0
+  );
   // 🔹 UI
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+
+  const handleSelectFromModal = (product: Product) => {
+    setCartProducts((prev) => [...prev, product]);
+    setIsProductModalOpen(false);
+  };
   return (
     <>
       {/* <Box display="flex" justifyContent="center" p={2}>
@@ -297,19 +337,26 @@ export default function CreateSaleForm() {
             {/* Товары */}
             <Typography variant="subtitle1">Товары</Typography>
             <Stack direction="row" spacing={1} my={1}>
-              <Button variant="contained" onClick={handleAddProduct}>
+              <Button
+                variant="contained"
+                onClick={() => setIsProductModalOpen(true)}
+              >
                 Выбрать
               </Button>
 
               {/* Search */}
+              {/* {JSON.stringify(searchResults)} */}
               <Autocomplete
-                disablePortal
+                // disablePortal
                 value={searchQuery}
                 onInputChange={handleSearchChange}
                 onChange={(_, val) => handleSelectProduct(val)}
-                options={searchResults.map((p: any) => p.name) || []}
+                options={
+                  searchResults?.result?.map((p: Product) => p.name) || []
+                }
+                // options={searchResults.map((p: any) => p.name) || []}
                 loading={isProductsLoading}
-                sx={{ width: "100%" }}
+                sx={{ width: "100%", height: "100%", bottom: "0" }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -329,55 +376,142 @@ export default function CreateSaleForm() {
               />
             </Stack>
 
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Название</TableCell>
-                  <TableCell>Цена</TableCell>
-                  <TableCell>Скидка</TableCell>
-                  <TableCell>Кол-во</TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {products.length === 0 ? (
+            <TableContainer sx={{ overflowX: "auto" }}>
+              <Table size="small" sx={{ minWidth: 900 }}>
+                <TableHead>
                   <TableRow>
-                    <TableCell
-                      sx={{
-                        width: "100%",
-                        display: "flex",
-                        justifyContent: "center",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 1,
-                      }}
-                      colSpan={5}
-                      align="center"
-                    >
-                      Нет данных
-                      <CustomDataIcon></CustomDataIcon>
-                    </TableCell>
+                    <TableCell>Название</TableCell>
+                    <TableCell>Цена</TableCell>
+                    <TableCell>Скидка</TableCell>
+                    <TableCell>Кол-во</TableCell>
+                    <TableCell>Ед.</TableCell>
+                    <TableCell>Итого</TableCell>
+                    <TableCell />
                   </TableRow>
-                ) : (
-                  products.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>{p.name}</TableCell>
-                      <TableCell>{p.price}</TableCell>
-                      <TableCell>{p.discount}</TableCell>
-                      <TableCell>{p.qty}</TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => handleRemoveProduct(p.id)}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                </TableHead>
+
+                <TableBody>
+                  {cartProducts.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={7}
+                        align="center"
+                        sx={{
+                          py: 5,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 2,
+                        }}
+                      >
+                        <Typography>Нет данных</Typography>
+                        <CustomDataIcon></CustomDataIcon>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    cartProducts.map((p) => {
+                      const total =
+                        ((p.price || 0) - (p.discount || 0)) * (p.qty || 1);
+                      return (
+                        <TableRow
+                          key={p.id}
+                          sx={{ borderRadius: 2, bgcolor: "#f9fafb", mb: 1 }}
+                        >
+                          <TableCell
+                            sx={{
+                              borderBottom: "none",
+                              maxWidth: 200,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {p.name}
+                          </TableCell>
+
+                          <TableCell sx={{ borderBottom: "none", width: 120 }}>
+                            <TextField
+                              size="small"
+                              type="number"
+                              variant="outlined"
+                              value={p.price}
+                              onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>
+                              ) => handlePriceChange(p.id, e)}
+                              inputProps={{ min: 0, step: 0.01 }}
+                            />
+                          </TableCell>
+
+                          <TableCell sx={{ borderBottom: "none", width: 120 }}>
+                            <TextField
+                              size="small"
+                              type="number"
+                              variant="outlined"
+                              value={p.discount}
+                              onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>
+                              ) => handleDiscountChange(p.id, e)}
+                              inputProps={{ min: 0, step: 0.01 }}
+                            />
+                          </TableCell>
+
+                          <TableCell sx={{ borderBottom: "none", width: 120 }}>
+                            <TextField
+                              size="small"
+                              type="number"
+                              variant="outlined"
+                              value={p.qty}
+                              onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>
+                              ) => handleQtyChange(p.id, e)}
+                              inputProps={{ min: 1, step: 1 }}
+                            />
+                          </TableCell>
+
+                          <TableCell sx={{ borderBottom: "none", width: 120 }}>
+                            {p.unit_name ?? "шт"}
+                          </TableCell>
+
+                          <TableCell
+                            sx={{
+                              borderBottom: "none",
+                              width: 100,
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {total.toFixed(2)}
+                          </TableCell>
+
+                          <TableCell
+                            sx={{
+                              borderBottom: "none",
+                              textAlign: "center",
+                              width: 100,
+                            }}
+                          >
+                            <Button
+                              variant="text"
+                              color="error"
+                              size="small"
+                              onClick={() => handleRemoveProduct(p.id)}
+                              sx={{ textTransform: "none" }}
+                            >
+                              Удалить
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
             <Typography sx={{ mt: 1 }}>
-              <b>Итого: {total.toFixed(2)} ₽</b>
+              <b>
+                Итого: {Number.isFinite(total) ? total.toFixed(2) : "0.00"} ₽
+              </b>
             </Typography>
 
             <TextField
@@ -415,6 +549,15 @@ export default function CreateSaleForm() {
             </Stack>
           </CardContent>
         </Card>
+        {/* <OrdersTable></OrdersTable> */}
+        {/* <SalesDocumentForm isOpen={true} /> */}
+
+        <ProductSelectModal
+          isOpen={isProductModalOpen}
+          token={searchToken}
+          onClose={() => setIsProductModalOpen(false)}
+          onSelect={handleSelectFromModal}
+        />
       </Box>
     </>
   );

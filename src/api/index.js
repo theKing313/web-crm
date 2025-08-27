@@ -1,41 +1,4 @@
 import Cookies from "js-cookie";
-// export const fetchTables = async (token) => {
-//   const tokenCookie = Cookies.get("token");
-
-//   if (tokenCookie) {
-//     const response = await fetch(
-//       `https://app.tablecrm.com/api/v1/docs_sales/?token=${tokenCookie}`
-//     );
-//     if (!response.ok) {
-//       throw new Error("Network response was not ok");
-//     }
-//     return response.json();
-//   } else {
-//     const response = await fetch(
-//       `https://app.tablecrm.com/api/v1/docs_sales/?token=${token}`
-//     );
-//     if (!response.ok) {
-//       throw new Error("Network response was not ok");
-//     }
-//     return response.json();
-//   }
-// };
-export const fetchTables = async (query) => {
-  if (query) {
-    // const response = await fetch(
-    //   `https://app.tablecrm.com/api/v1/docs_sales/?token=${token}`
-    // );
-    console.log(query);
-    // const data = await fetchContractors(query);
-    // const data = await fetchWarehouses(query);
-    // const data = await fetchOrganizations(query);
-    // Promise.all();
-    // if (!response.ok) {
-    //   throw new Error("Network response was not ok");
-    // }
-    return data;
-  }
-};
 
 export const fetchCustomerByPhone = async () => {
   const token = Cookies.get("token");
@@ -144,12 +107,30 @@ export const fetchPboxes = async (query) => {
     throw new Error("Network response was not ok");
   }
 };
+
 export const fetchProducts = async (query) => {
   try {
+    // alert(JSON.stringify(query));
     const response = await fetch(
-      `https://app.tablecrm.com/api/v1/products/?token=${query.token}&limit=${query.limit}&offset=0&search=${query.search}&sort=created_at%3Adesc`
+      `https://app.tablecrm.com/api/v1/nomenclature/?token=${query.token}&name=${query.name}&limit=${query.limit}&offset=0&with_prices=false&with_balance=false&with_attributes=false&only_main_from_group=false`
     );
+    // `https://app.tablecrm.com/api/v1/nomenclature/?token=af1874616430e04cfd4bce30035789907e899fc7c3a1a4bb27254828ff304a77&name=%D0%B0%D0%B1&limit=100&offset=0&with_prices=false&with_balance=false&with_attributes=false&only_main_from_group=false`
     const data = await response.json();
+    // alert(JSON.stringify(data));
+    return data;
+  } catch (error) {
+    throw new Error("Network response was not ok");
+  }
+};
+export const fetchAllProducts = async (query) => {
+  try {
+    // alert(JSON.stringify(query));
+    const response = await fetch(
+      `https://app.tablecrm.com/api/v1/nomenclature/?token=${query.token}&limit=${query.limit}&offset=0&with_prices=false&with_balance=false&with_attributes=false&only_main_from_group=false`
+    );
+    // `https://app.tablecrm.com/api/v1/nomenclature/?token=af1874616430e04cfd4bce30035789907e899fc7c3a1a4bb27254828ff304a77&name=%D0%B0%D0%B1&limit=100&offset=0&with_prices=false&with_balance=false&with_attributes=false&only_main_from_group=false`
+    const data = await response.json();
+    // alert(JSON.stringify(data));
     return data;
   } catch (error) {
     throw new Error("Network response was not ok");
