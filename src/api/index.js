@@ -136,3 +136,41 @@ export const fetchAllProducts = async (query) => {
     throw new Error("Network response was not ok");
   }
 };
+
+export const createDocsSales = async ({ token, data }) => {
+  // http://localhost:5173/app.tablecrm.com/api/v1/docs_sales/?token=af1874616430e04cfd4bce30035789907e899fc7c3a1a4bb27254828ff304a77&generate_out=true
+  //app.tablecrm.com/api/v1/docs_sales/?token=af1874616430e04cfd4bce30035789907e899fc7c3a1a4bb27254828ff304a77&generate_out=true
+  // alert(token);
+  // alert(data);/
+  // https: fetch("https://app.tablecrm.com/api/v1/sales", {
+  //   method: "POST",
+  //   headers: {
+  //     "Content-Type": "application/json",
+  //     Authorization: `Bearer ${token}`, // если нужен токен авторизации
+  //   },
+  //   body: JSON.stringify(payload),
+  // });
+  console.log(JSON.stringify(data));
+  // alert(JSON.stringify(data));
+  // localStorage.setItem(JSON.stringify(data));
+  try {
+    const response = await fetch(
+      `https://app.tablecrm.com/api/v1/docs_sales/?token=${token}&generate_out=true`,
+      {
+        method: "POST",
+        headers: {
+          // "accept": "application/json",
+          "Content-Type": "application/json",
+          // Authorization: `Bearer ${token}`, // если нужен токен авторизации
+        },
+        body: JSON.stringify(data),
+      }
+    );
+    const responseData = await response.json();
+    // alert(data);
+    return responseData;
+  } catch (error) {
+    alert(error);
+    throw new Error("Network response was not ok");
+  }
+};

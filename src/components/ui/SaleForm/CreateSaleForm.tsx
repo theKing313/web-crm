@@ -22,6 +22,7 @@ import {
 import { useDebounce } from "../../../hooks/useDebounce";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import {
+  createDocsSales,
   fetchContractors,
   fetchOrganizations,
   fetchPboxes,
@@ -106,22 +107,75 @@ export default function CreateSaleForm() {
   const pboxesData = queries[3].data?.result || [];
 
   const isLoading = queries.some((q) => q.isLoading);
+  const handleSubmit = async (conduct: boolean) => {
+    const payload = [
+      {
+        number: "", // строка
+        dated: Date.now(), // unix в мс, как int64
+        operation: "Заказ",
+        tags: "",
+        parent_docs_sales: 0,
+        comment: "",
+        client: 0,
+        contragent: 0,
+        contract: 0,
+        organization: 0,
+        loyality_card_id: 0,
+        warehouse: 0,
+        paybox: 0,
+        tax_included: true,
+        tax_active: true,
+        settings: {
+          repeatability_period: "minutes",
+          repeatability_value: 0,
+          date_next_created: 0,
+          transfer_from_weekends: true,
+          skip_current_month: true,
+          repeatability_count: 0,
+          default_payment_status: false,
+          repeatability_tags: false,
+          repeatability_status: true,
+        },
+        sales_manager: 0,
+        paid_rubles: paid || 0,
+        paid_lt: 0,
+        status: true,
+        goods: cartProducts.map((p) => ({
+          price_type:
+            priceTypes.indexOf(priceType ?? "") >= 0
+              ? priceTypes.indexOf(priceType ?? "")
+              : 0,
+          price: p.price ?? 0,
+          quantity: p.qty ?? 1,
+          unit: 0, // ID единицы измерения
+          unit_name: p.unit_name || "шт", // строка
+          tax: 0,
+          discount: p.discount ?? 0,
+          sum_discounted: ((p.price ?? 0) - (p.discount ?? 0)) * (p.qty ?? 1),
+          status: "string", // <-- лучше "string", чтобы совпало с их схемой
+          nomenclature: String(p.id), // строка
+          nomenclature_name: p.name ?? "",
+        })),
+        priority: 10,
+      },
+    ];
 
-  const handleSubmit = (conduct: boolean) => {
-    const payload = {
-      token,
-      phone,
-      customer,
-      account,
-      organization,
-      warehouse,
-      priceType,
-      pbox,
-      paid,
-      conduct,
-    };
-    console.log("SUBMIT >>>", payload);
-    // тут вызов API POST
+    try {
+      const response = await createDocsSales({
+        token: searchToken,
+        data: payload,
+      });
+
+      if (response) {
+        console.log("Документ успешно создан:", response);
+        alert("Документ создан");
+        window.location.reload();
+      } else {
+        console.error("Ошибка создания документа:", response);
+      }
+    } catch (error) {
+      console.error("Сетевая ошибка:", error);
+    }
   };
 
   // 🔹 Search
@@ -376,9 +430,12 @@ export default function CreateSaleForm() {
               />
             </Stack>
 
-            <TableContainer sx={{ overflowX: "auto" }}>
-              <Table size="small" sx={{ minWidth: 900 }}>
-                <TableHead>
+            <TableContainer sx={{ overflowX: "hidden" }}>
+              <Table size="small" sx={{ minWidth: { xs: "100%", sm: 700 } }}>
+                {/* Заголовки скрываем на мобилке */}
+                <TableHead
+                  sx={{ display: { xs: "none", sm: "table-header-group" } }}
+                >
                   <TableRow>
                     <TableCell>Название</TableCell>
                     <TableCell>Цена</TableCell>
@@ -393,20 +450,9 @@ export default function CreateSaleForm() {
                 <TableBody>
                   {cartProducts.length === 0 ? (
                     <TableRow>
-                      <TableCell
-                        colSpan={7}
-                        align="center"
-                        sx={{
-                          py: 5,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 2,
-                        }}
-                      >
+                      <TableCell colSpan={7} align="center">
                         <Typography>Нет данных</Typography>
-                        <CustomDataIcon></CustomDataIcon>
+                        <CustomDataIcon />
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -416,78 +462,134 @@ export default function CreateSaleForm() {
                       return (
                         <TableRow
                           key={p.id}
-                          sx={{ borderRadius: 2, bgcolor: "#f9fafb", mb: 1 }}
+                          sx={{
+                            display: { xs: "block", sm: "table-row" },
+                            mb: { xs: 2, sm: 0 },
+                            p: { xs: 2, sm: 0 },
+                            borderRadius: 2,
+                            bgcolor: "#f9fafb",
+                          }}
                         >
+                          {/* Название */}
                           <TableCell
                             sx={{
                               borderBottom: "none",
-                              maxWidth: 200,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
+                              display: { xs: "block", sm: "table-cell" },
+                              fontWeight: "bold",
                             }}
                           >
                             {p.name}
                           </TableCell>
 
-                          <TableCell sx={{ borderBottom: "none", width: 120 }}>
+                          {/* Для мобилки — блок с полями */}
+                          <Box
+                            sx={{
+                              display: { xs: "flex", sm: "none" },
+                              flexDirection: "column",
+                              gap: 1,
+                              mt: 1,
+                            }}
+                          >
                             <TextField
+                              label="Цена"
                               size="small"
                               type="number"
-                              variant="outlined"
                               value={p.price}
-                              onChange={(
-                                e: React.ChangeEvent<HTMLInputElement>
-                              ) => handlePriceChange(p.id, e)}
+                              onChange={(e) => handlePriceChange(p.id, e)}
                               inputProps={{ min: 0, step: 0.01 }}
                             />
-                          </TableCell>
-
-                          <TableCell sx={{ borderBottom: "none", width: 120 }}>
                             <TextField
+                              label="Скидка"
                               size="small"
                               type="number"
-                              variant="outlined"
                               value={p.discount}
-                              onChange={(
-                                e: React.ChangeEvent<HTMLInputElement>
-                              ) => handleDiscountChange(p.id, e)}
+                              onChange={(e) => handleDiscountChange(p.id, e)}
                               inputProps={{ min: 0, step: 0.01 }}
                             />
-                          </TableCell>
-
-                          <TableCell sx={{ borderBottom: "none", width: 120 }}>
                             <TextField
+                              label="Кол-во"
                               size="small"
                               type="number"
-                              variant="outlined"
                               value={p.qty}
-                              onChange={(
-                                e: React.ChangeEvent<HTMLInputElement>
-                              ) => handleQtyChange(p.id, e)}
+                              onChange={(e) => handleQtyChange(p.id, e)}
                               inputProps={{ min: 1, step: 1 }}
                             />
-                          </TableCell>
+                            <Typography variant="body2">
+                              Ед.: {p.unit_name ?? "шт"}
+                            </Typography>
+                            <Typography variant="body2" fontWeight="bold">
+                              Итого: {total.toFixed(2)} ₽
+                            </Typography>
+                            <Button
+                              variant="outlined"
+                              color="error"
+                              size="small"
+                              onClick={() => handleRemoveProduct(p.id)}
+                            >
+                              Удалить
+                            </Button>
+                          </Box>
 
-                          <TableCell sx={{ borderBottom: "none", width: 120 }}>
-                            {p.unit_name ?? "шт"}
-                          </TableCell>
-
+                          {/* Для десктопа — обычные ячейки */}
                           <TableCell
                             sx={{
                               borderBottom: "none",
-                              width: 100,
-                              fontWeight: "bold",
+                              display: { xs: "none", sm: "table-cell" },
+                            }}
+                          >
+                            <TextField
+                              size="small"
+                              type="number"
+                              value={p.price}
+                              onChange={(e) => handlePriceChange(p.id, e)}
+                            />
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              borderBottom: "none",
+                              display: { xs: "none", sm: "table-cell" },
+                            }}
+                          >
+                            <TextField
+                              size="small"
+                              type="number"
+                              value={p.discount}
+                              onChange={(e) => handleDiscountChange(p.id, e)}
+                            />
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              borderBottom: "none",
+                              display: { xs: "none", sm: "table-cell" },
+                            }}
+                          >
+                            <TextField
+                              size="small"
+                              type="number"
+                              value={p.qty}
+                              onChange={(e) => handleQtyChange(p.id, e)}
+                            />
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              borderBottom: "none",
+                              display: { xs: "none", sm: "table-cell" },
+                            }}
+                          >
+                            {p.unit_name ?? "шт"}
+                          </TableCell>
+                          <TableCell
+                            sx={{
+                              borderBottom: "none",
+                              display: { xs: "none", sm: "table-cell" },
                             }}
                           >
                             {total.toFixed(2)}
                           </TableCell>
-
                           <TableCell
                             sx={{
                               borderBottom: "none",
-                              textAlign: "center",
-                              width: 100,
+                              display: { xs: "none", sm: "table-cell" },
                             }}
                           >
                             <Button
@@ -495,7 +597,6 @@ export default function CreateSaleForm() {
                               color="error"
                               size="small"
                               onClick={() => handleRemoveProduct(p.id)}
-                              sx={{ textTransform: "none" }}
                             >
                               Удалить
                             </Button>
